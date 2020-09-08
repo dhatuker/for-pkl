@@ -24,8 +24,10 @@ class NewsParserData(object):
     config = None
     driver = None
     #URL = "https://republika.co.id/"
-    #URL = "http://kompas.com/"
-    URL = 'http://news.detik.com/'
+    #URL = "https://kompas.com/"
+    # URL = 'https://news.detik.com/'
+    URL = "https://okezone.com"
+    # URL = "http://cnnindonesia.com"
 
     def __init__(self, db, path_to_webdriver, config=None, logger=None):
         self.logger = logger
@@ -63,10 +65,14 @@ class NewsParserData(object):
         self.openLink(self.URL)
         if "kompas" in self.URL :
             newslink = "kompas"
-        if "detik" in self.URL :
+        elif "detik" in self.URL :
             newslink = "detik"
-        if "republika" in self.URL :
+        elif "republika" in self.URL :
             newslink = "republika"
+        elif "okezone" in self.URL :
+            newslink = "okezone"
+        elif "cnn" in self.URL :
+            newslink = "cnn"
         self.logger.info("START Scrolling")
         Helper.scroll_down(self.driver, int(self.config.get(newslink, 'scroll')))
         self.logger.info("FINISH Scrolling")
@@ -76,27 +82,37 @@ class NewsParserData(object):
     def getLink(self):
 
         newslink = self.openWeb()
-
         self.logger.info("START getting news link")
-
-        container = self.driver.find_elements_by_xpath(self.config.get(newslink, 'container'))
-        print(len(container))
+        if newslink == "cnn":
+            cont = self.driver.find_element_by_xpath(self.config.get(newslink, 'container'))
+            container = cont.find_elements_by_xpath(self.config.get(newslink, 'link'))
+        else:
+            container = self.driver.find_elements_by_xpath(self.config.get(newslink, 'container'))
 
         link = []
 
         for i in range(len(container)):
             con = container[i]
 
-            alink = con.find_element_by_xpath(self.config.get(newslink, 'link'))
-            link_ = alink.get_attribute('href')
+            if newslink == "cnn":
+                link_ = con.get_attribute('href')
+            else:
+                alink = con.find_element_by_xpath(self.config.get(newslink, 'link'))
+                link_ = alink.get_attribute('href')
+
             link.append(link_)
 
         for i in link:
             link_ = i
             if newslink == "kompas":
                 link_ = self.linkFilterKompas(i)
-            if newslink == "detik":
+            elif newslink == "detik":
                 link_ = self.linkFilterDetik(i)
+            elif newslink == "cnn":
+                link_ = self.linkFilterCNN(i)
+            elif newslink == "okezone":
+                link_ = self.linkFilterOkezone(i)
+
             if link_ is not None:
                 self.openLink(link_)
                 self.getElement(link_, newslink)
@@ -108,7 +124,11 @@ class NewsParserData(object):
         self.logger.info("NEWS Title: {}".format(title))
 
         date_ = self.driver.find_element_by_xpath(self.config.get(newslink, 'date'))
-        date = date_.get_attribute("content")
+
+        if newslink == "okezone":
+            date = date_.text
+        else:
+            date = date_.get_attribute("content")
 
         self.logger.info("NEWS Date: {}".format(date))
 
@@ -124,7 +144,10 @@ class NewsParserData(object):
                     paging = page.find_elements_by_xpath(self.config.get(newslink, 'page'))
                     for i in range(len(paging) - 1):
                         self.logger.info("getting NEWS content: next page exist, getting content")
-                        link_ = link + "?page=" + str(i+2)
+                        if newslink == "detik":
+                            link_ = link + "/" + str(i + 2)
+                        elif newslink == "kompas" or newslink == "okezone":
+                            link_ = link + "?page=" + str(i+2)
                         self.openLink(link_)
                         content_ = self.driver.find_element_by_xpath(self.config.get(newslink, 'content'))
                         p = content_.find_elements_by_xpath('.//p')
@@ -147,11 +170,27 @@ class NewsParserData(object):
             if kompas in link:
                 return link
 
+    def linkFilterCNN(self, link):
+        video = "/video"
+
+        if video not in link:
+            return link
+
+    def linkFilterOkezone(self, link):
+        okezone = ".okezone."
+        re_page = r"[?]\w+[=]\d"
+
+        if okezone in link:
+            link_ = re.sub(re_page, "", link)
+            return link_
+
     def linkFilterDetik(self, link):
         dtv = "detiktv"
+        re_detik = r"[?].*"
 
         if dtv not in link:
-            return link
+            link_ = re.sub(re_detik, "", link)
+            return link_
 
     #def getDate(self, input):
 
