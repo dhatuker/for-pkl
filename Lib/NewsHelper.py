@@ -22,11 +22,12 @@ class Helper(object):
 
     @staticmethod
     def toDate(input):
-        re_date = r"(\d{1,2}) ([A-Za-z]+).? (\d{4})"
+        re_date = r"(\d{1,2}) ([A-Za-z]+).? (\d{4}) (\d{2}[:]\d{2})"
         output = re.search(re_date, input)
         date = output.group(1)
         month = output.group(2)
         year = output.group(3)
+        hour = output.group(4)
 
         month = month.lower()
         months = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober',
@@ -39,9 +40,4 @@ class Helper(object):
         elif months_en.count(month) > 0:
             month = months_en.index(month) + 1
 
-        return str(year) + "-" + str(month) + "-" + str(date)
-
-    @staticmethod
-    def getNumber(input):
-        output = input.lower().replace(' comments','').replace(' shares', '')
-        return output
+        return str(year) + "-" + str(month) + "-" + str(date) + " " + str(hour) + ":00"

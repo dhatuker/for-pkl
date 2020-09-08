@@ -23,11 +23,6 @@ class NewsParserData(object):
     logger = None
     config = None
     driver = None
-    #URL = "https://republika.co.id/"
-    #URL = "https://kompas.com/"
-    # URL = 'https://news.detik.com/'
-    URL = "https://okezone.com"
-    # URL = "http://cnnindonesia.com"
 
     def __init__(self, db, path_to_webdriver, config=None, logger=None):
         self.logger = logger
@@ -61,72 +56,82 @@ class NewsParserData(object):
         time.sleep(5)
         self.logger.info("opening URL: DONE")
 
-    def openWeb(self):
-        self.openLink(self.URL)
-        if "kompas" in self.URL :
-            newslink = "kompas"
-        elif "detik" in self.URL :
-            newslink = "detik"
-        elif "republika" in self.URL :
-            newslink = "republika"
-        elif "okezone" in self.URL :
-            newslink = "okezone"
-        elif "cnn" in self.URL :
-            newslink = "cnn"
+    def openWeb(self, input):
+
+        news = self.db.get_source(input)
+
+        #get ID, URL, SCROLL
+        news_id = news[0]['id']
+        url = news[0]['link']
+        scroll = news[0]['scroll']
+
+        self.openLink(url)
         self.logger.info("START Scrolling")
-        Helper.scroll_down(self.driver, int(self.config.get(newslink, 'scroll')))
+        Helper.scroll_down(self.driver, scroll)
         self.logger.info("FINISH Scrolling")
 
-        return newslink
+        return news_id, news
 
-    def getLink(self):
+    def getLink(self, input):
 
-        newslink = self.openWeb()
+        news_id, news = self.openWeb(input)
+
+        #get CONTAINER, LINK
+        get_container = news[0]['get_container']
+        get_link = news[0]['get_link']
+
         self.logger.info("START getting news link")
-        if newslink == "cnn":
-            cont = self.driver.find_element_by_xpath(self.config.get(newslink, 'container'))
-            container = cont.find_elements_by_xpath(self.config.get(newslink, 'link'))
+        if news_id == 5:
+            cont = self.driver.find_element_by_xpath(get_container)
+            container = cont.find_elements_by_xpath(get_link)
         else:
-            container = self.driver.find_elements_by_xpath(self.config.get(newslink, 'container'))
+            container = self.driver.find_elements_by_xpath(get_container)
 
-        link = []
+        linked = []
 
         for i in range(len(container)):
             con = container[i]
 
-            if newslink == "cnn":
+            if news_id == 5:
                 link_ = con.get_attribute('href')
             else:
-                alink = con.find_element_by_xpath(self.config.get(newslink, 'link'))
+                alink = con.find_element_by_xpath(get_link)
                 link_ = alink.get_attribute('href')
 
-            link.append(link_)
+            linked.append(link_)
 
-        for i in link:
+        for i in linked:
             link_ = i
-            if newslink == "kompas":
+            if news_id == 1:
                 link_ = self.linkFilterKompas(i)
-            elif newslink == "detik":
+            elif news_id == 2:
                 link_ = self.linkFilterDetik(i)
-            elif newslink == "cnn":
-                link_ = self.linkFilterCNN(i)
-            elif newslink == "okezone":
+            elif news_id == 4:
                 link_ = self.linkFilterOkezone(i)
+            elif news_id == 5:
+                link_ = self.linkFilterCNN(i)
 
             if link_ is not None:
                 self.openLink(link_)
-                self.getElement(link_, newslink)
+                self.getElement(link_, news_id, news)
 
-    def getElement(self, link, newslink):
+    def getElement(self, link, news_id, news):
 
-        title = self.driver.find_element_by_xpath(self.config.get(newslink, 'title')).text
+        #get TITLE, DATE, CONTENT
+        get_title = news[0]['get_title']
+        get_date = news[0]['get_date']
+        get_content = news[0]['get_content']
+        get_page_container = news[0]['get_page_container']
+        get_page = news[0]['get_page']
+
+        title = self.driver.find_element_by_xpath(get_title).text
 
         self.logger.info("NEWS Title: {}".format(title))
 
-        date_ = self.driver.find_element_by_xpath(self.config.get(newslink, 'date'))
+        date_ = self.driver.find_element_by_xpath(get_date)
 
-        if newslink == "okezone":
-            date = date_.text
+        if news_id == 4:
+            date = Helper.toDate(date_.text)
         else:
             date = date_.get_attribute("content")
 
@@ -134,22 +139,22 @@ class NewsParserData(object):
 
         try:
             self.logger.info("getting NEWS content: first page")
-            content_ = self.driver.find_element_by_xpath(self.config.get(newslink, 'content'))
+            content_ = self.driver.find_element_by_xpath(get_content)
             p = content_.find_elements_by_xpath('.//p')
             news_content = ' '.join(item.text for item in p)
             try:
                 self.logger.info("getting NEWS content: check if there is next page or not")
-                page = self.driver.find_element_by_xpath(self.config.get(newslink, 'page_container'))
+                page = self.driver.find_element_by_xpath(get_page_container)
                 if page is not None:
-                    paging = page.find_elements_by_xpath(self.config.get(newslink, 'page'))
+                    paging = page.find_elements_by_xpath(get_page)
                     for i in range(len(paging) - 1):
                         self.logger.info("getting NEWS content: next page exist, getting content")
-                        if newslink == "detik":
+                        if news_id == 2:
                             link_ = link + "/" + str(i + 2)
-                        elif newslink == "kompas" or newslink == "okezone":
+                        elif news_id == 1 or news_id == 4:
                             link_ = link + "?page=" + str(i+2)
                         self.openLink(link_)
-                        content_ = self.driver.find_element_by_xpath(self.config.get(newslink, 'content'))
+                        content_ = self.driver.find_element_by_xpath(get_content)
                         p = content_.find_elements_by_xpath('.//p')
                         news_content_ = ' '.join(item.text for item in p)
                         news_content = news_content + " " + news_content_
@@ -161,6 +166,8 @@ class NewsParserData(object):
             news_content = None
 
         self.logger.info("NEWS content: {}".format(news_content))
+
+        self.db.insert_news(news_id, link, title, date, news_content)
 
     def linkFilterKompas(self, link):
         kpremium = "utm_source"
@@ -189,8 +196,9 @@ class NewsParserData(object):
         re_detik = r"[?].*"
 
         if dtv not in link:
-            link_ = re.sub(re_detik, "", link)
-            return link_
+            if "php" not in link:
+                link_ = re.sub(re_detik, "", link)
+                return link_
 
     #def getDate(self, input):
 
@@ -236,7 +244,7 @@ class NewsParsing(object):
             self.logger.handlers.append(loghandler)
         self.db = NewsparserDatabaseHandler.instantiate_from_configparser(self.config, self.logger)
 
-    def run(self):
+    def run(self, link):
         start_time = time.time()
         self.init()
         self.hostname = socket.gethostname()
@@ -245,7 +253,7 @@ class NewsParsing(object):
         self.newsParserData = NewsParserData(db=self.db, path_to_webdriver=self.config.get('Selenium', 'chromedriver_path'),
                                              config=self.config, logger=self.logger)
 
-        self.newsParserData.getLink()
+        self.newsParserData.getLink(link)
 
         self.logger.info("Finish %s" % self.filename)
         print("--- %s seconds ---" % (time.time() - start_time))
