@@ -1,4 +1,3 @@
-
 from Lib.Preprocessing import PreprocessingData, Proses
 
 def main():

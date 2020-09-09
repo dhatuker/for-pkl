@@ -24,7 +24,6 @@ class PreprocessingData(object):
         data = self.db.get_article(today)
         print(data[0])
 
-
 class Proses(object):
     config = None
     logger = None

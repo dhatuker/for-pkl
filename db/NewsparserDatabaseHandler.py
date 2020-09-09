@@ -70,8 +70,8 @@ class NewsparserDatabaseHandler(object):
         rs = self._db.query(sql, test=test)
         return rs
 
-    def get_article(self, today):
-        test = today + '%'
-        sql = """SELECT * FROM news_content WHERE date LIKE :test"""
-        rs = self._db.query(sql, test=test)
+    def get_article(self, input):
+        time = input + '%'
+        sql = """SELECT * FROM news_content WHERE date LIKE :time"""
+        rs = self._db.query(sql, time=time)
         return rs
