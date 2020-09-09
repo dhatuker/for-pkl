@@ -141,7 +141,7 @@ class NewsParserData(object):
             self.logger.info("getting NEWS content: first page")
             content_ = self.driver.find_element_by_xpath(get_content)
             p = content_.find_elements_by_xpath('.//p')
-            news_content = ' '.join(item.text for item in p)
+            news_content = ' '.join(item.text for item in p if "Baca juga:" not in item.text)
             try:
                 self.logger.info("getting NEWS content: check if there is next page or not")
                 page = self.driver.find_element_by_xpath(get_page_container)
