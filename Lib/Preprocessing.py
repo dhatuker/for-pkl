@@ -1,12 +1,15 @@
 import logbook
 import time
+import numpy as np
+import pandas as pd
 import re
 import sys
 import configparser
 import os
 import socket
-from datetime import date
 
+from datetime import date
+from sklearn.feature_extraction.text import TfidfVectorizer
 from db.NewsparserDatabaseHandler import NewsparserDatabaseHandler
 
 class PreprocessingData(object):
@@ -18,6 +21,54 @@ class PreprocessingData(object):
         self.logger = logger
         self.config = config
         self.db = db
+
+        g = open("stopwords.txt", "r")
+        self.gtext = g.read()
+        g.close()
+
+    def prepros(self):
+        # today = str(date.today())
+        today = '2020-09-09'
+        data = list(self.db.get_article(today))
+        stop_words = self.gtext.split("\n")
+
+        doc = list()
+
+        for i in range(len(data)):
+            if data[i]['content'] is not None:
+                doc.append(data[i]['title']+" "+data[i]['content'])
+
+        news_df = pd.DataFrame({'document': doc})
+
+        # removing everything except alphabets`
+        news_df['clean_doc'] = news_df['document'].str.replace("[^a-zA-Z#]", " ")
+
+        # removing null fields
+        news_df = news_df[news_df['clean_doc'].notnull()]
+
+        # make all text lowercase
+        news_df['clean_doc'] = news_df['clean_doc'].apply(lambda x: x.lower())
+
+        # tokenization
+        tokenized_doc = news_df['clean_doc'].apply(lambda x: x.split())
+
+        # remove stop-words
+        tokenized_doc = tokenized_doc.apply(lambda x: [item for item in x if item not in stop_words])
+
+        # de-tokenization
+        detokenized_doc = []
+        for i in range(len(tokenized_doc)):
+            if i in tokenized_doc:
+                t = ' '.join(tokenized_doc[i])
+                detokenized_doc.append(t)
+
+        # tfidf vectorizer of scikit learn
+        vectorizer = TfidfVectorizer(stop_words=stop_words, max_features=10000, max_df=0.5, use_idf=True,
+                                         ngram_range=(1, 3))
+        X = vectorizer.fit_transform(detokenized_doc)
+        print(X.shape)  # check shape of the document-term matrixterms = vectorizer.get_feature_names()
+
+        # print(detokenized_doc)
 
     def getData(self):
         today = str(date.today())
@@ -66,7 +117,7 @@ class Proses(object):
         self.logger.info("Starting {} on {}".format(type(self).__name__, self.hostname))
         self.PreprocessingData = PreprocessingData(db=self.db, config=self.config, logger=self.logger)
 
-        self.PreprocessingData.getData()
+        self.PreprocessingData.prepros()
 
         self.logger.info("Finish %s" % self.filename)
         print("--- %s seconds ---" % (time.time() - start_time))
