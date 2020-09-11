@@ -10,6 +10,8 @@ import socket
 
 from datetime import date
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+from sklearn.utils.extmath import randomized_svd
 from db.NewsparserDatabaseHandler import NewsparserDatabaseHandler
 
 class PreprocessingData(object):
@@ -28,7 +30,7 @@ class PreprocessingData(object):
 
     def prepros(self):
         # today = str(date.today())
-        today = '2020-09-09'
+        today = '2020-09-08'
         data = list(self.db.get_article(today))
         stop_words = self.gtext.split("\n")
 
@@ -68,12 +70,28 @@ class PreprocessingData(object):
         X = vectorizer.fit_transform(detokenized_doc)
         print(X.shape)  # check shape of the document-term matrixterms = vectorizer.get_feature_names()
 
-        # print(detokenized_doc)
+        terms = vectorizer.get_feature_names()
+        self.clusteringKmeans(X, terms)
 
-    def getData(self):
-        today = str(date.today())
-        data = self.db.get_article(today)
-        print(data[0])
+
+
+    def clusteringKmeans(self, X, terms):
+        num_clusters = 10
+        km = KMeans(n_clusters=num_clusters)
+        km.fit(X)
+
+        U, Sigma, VT = randomized_svd(X, n_components=10, n_iter=300,
+                                      random_state=122)
+
+        # printing the concepts
+        for i, comp in enumerate(VT):
+            terms_comp = zip(terms, comp)
+            sorted_terms = sorted(terms_comp, key=lambda x: x[1], reverse=True)[:7]
+            print("Concept " + str(i) + ": ")
+            for t in sorted_terms:
+                print(t[0])
+            print(" ")
+
 
 class Proses(object):
     config = None
