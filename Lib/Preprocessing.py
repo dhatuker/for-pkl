@@ -7,6 +7,7 @@ import configparser
 import os
 import socket
 from Lib.PreHelper import PreHelper
+from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 
 import gensim
 from gensim.models import Phrases
@@ -51,6 +52,10 @@ class PreprocessingData(object):
 
         doc = list()
 
+        # create stemmer
+        factory = StemmerFactory()
+        stemmer = factory.create_stemmer()
+
         for i in range(len(data)):
             if data[i]['content'] is not None:
                 doc.append(data[i]['title']+" "+data[i]['content'])
@@ -65,6 +70,9 @@ class PreprocessingData(object):
 
         # make all text lowercase
         news_df['clean_doc'] = news_df['clean_doc'].apply(lambda x: x.lower())
+
+        # Stemming
+        news_df['clean_doc'] = news_df['clean_doc'].apply(lambda x: stemmer.stem(x))
 
         # tokenization
         tokenized_doc = news_df['clean_doc'].apply(lambda x: x.split())
