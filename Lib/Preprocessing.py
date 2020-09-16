@@ -1,12 +1,26 @@
 import logbook
 import time
 import numpy as np
-import pandas as pd
 import re
 import sys
 import configparser
 import os
 import socket
+from Lib.PreHelper import PreHelper
+
+import gensim
+from gensim.models import Phrases
+from gensim import corpora, models
+from gensim.models.coherencemodel import CoherenceModel
+from gensim.models.ldamodel import LdaModel
+from gensim.corpora.dictionary import Dictionary
+from numpy import array
+
+from helper import *
+import warnings
+
+warnings.filterwarnings('ignore')
+import pandas as pd
 
 from datetime import date
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -33,6 +47,7 @@ class PreprocessingData(object):
         today = '2020-09-08'
         data = list(self.db.get_article(today))
         stop_words = self.gtext.split("\n")
+        stop_words.extend(['kompas','republika' ,'com' ,'co'])
 
         doc = list()
 
@@ -68,29 +83,146 @@ class PreprocessingData(object):
         vectorizer = TfidfVectorizer(stop_words=stop_words, max_features=10000, max_df=0.5, use_idf=True,
                                          ngram_range=(1, 3))
         X = vectorizer.fit_transform(detokenized_doc)
-        print(X.shape)  # check shape of the document-term matrixterms = vectorizer.get_feature_names()
+        print("Dari Vectorizer ", X.shape)  # check shape of the document-term matrixterms = vectorizer.get_feature_names()
 
         terms = vectorizer.get_feature_names()
-        self.clusteringKmeans(X, terms)
+        #self.clusteringKmeans(X, terms, today)
+        self.topicModeling(tokenized_doc)
 
 
-
-    def clusteringKmeans(self, X, terms):
+    def clusteringKmeans(self, X, terms, today):
         num_clusters = 10
         km = KMeans(n_clusters=num_clusters)
-        km.fit(X)
 
         U, Sigma, VT = randomized_svd(X, n_components=10, n_iter=300,
                                       random_state=122)
 
         # printing the concepts
         for i, comp in enumerate(VT):
+            count = i + 1
             terms_comp = zip(terms, comp)
             sorted_terms = sorted(terms_comp, key=lambda x: x[1], reverse=True)[:7]
-            print("Concept " + str(i) + ": ")
+            print("Topik " + str(count) + ": ")
             for t in sorted_terms:
-                print(t[0])
-            print(" ")
+                topic = t[0]
+                self.db.insert_prepro(today, count, topic)
+
+    def topicModeling(self, text_list):
+        bigram = Phrases(text_list, min_count=10)
+        trigram = Phrases(bigram[text_list])
+        for idx in range(len(text_list)):
+            for token in bigram[text_list[idx]]:
+                if '_' in token:
+                    # Token is a bigram, add to document.
+                    text_list[idx].append(token)
+            for token in trigram[text_list[idx]]:
+                if '_' in token:
+                    # Token is a bigram, add to document.
+                    text_list[idx].append(token)
+        dictionary = corpora.Dictionary(text_list)
+        dictionary.filter_extremes(no_below=5, no_above=0.2)
+        # no_below (int, optional) – Keep tokens which are contained in at least no_below documents.
+        # no_above (float, optional) – Keep tokens which are contained in no more than no_above documents (fraction of total corpus size, not an absolute number).
+        print(dictionary)
+
+        doc_term_matrix = [dictionary.doc2bow(doc) for doc in text_list]
+        # The function doc2bow converts document (a list of words) into the bag-of-words format
+        '''The function doc2bow() simply counts the number of occurrences of each distinct word, 
+        converts the word to its integer word id and returns the result as a sparse vector. 
+        The sparse vector [(0, 1), (1, 1)] therefore reads: in the document “Human computer interaction”, 
+        the words computer (id 0) and human (id 1) appear once; 
+        the other ten dictionary words appear (implicitly) zero times.'''
+        print(len(doc_term_matrix))
+        print(doc_term_matrix[100])
+        tfidf = models.TfidfModel(doc_term_matrix)  # build TF-IDF model
+        corpus_tfidf = tfidf[doc_term_matrix]
+
+        start = 1
+        limit = 21
+        step = 1
+        model_list, coherence_values = self.compute_coherence_values(dictionary, corpus=corpus_tfidf,
+                                                                texts=text_list, start=start, limit=limit, step=step)
+
+        optimal_model = model_list[3]
+        model_topics = optimal_model.show_topics(formatted=False)
+        print("model list : ", model_topics)
+        # show graphs
+        import matplotlib.pyplot as plt
+
+        x = range(start, limit, step)
+        
+        # plt.plot(x, coherence_values)
+        # plt.xlabel("Num Topics")
+        # plt.ylabel("Coherence score")
+        # plt.legend(("coherence_values"), loc='best')
+        # plt.show()
+
+        nilai = []
+
+        for m, cv in zip(x, coherence_values):
+            nilai.append([m, cv])
+            print("Num Topics =", m, " has Coherence Value of", round(cv, 6))
+
+        nilai.sort(reverse=True, key=PreHelper.maxCV)
+
+        df_topic_sents_keywords = self.format_topics_sentences(ldamodel=optimal_model, corpus=corpus_tfidf, texts=dictionary)
+
+        # Format
+        df_dominant_topic = df_topic_sents_keywords.reset_index()
+        df_dominant_topic.columns = ['Document_No', 'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'Text']
+
+        # Show
+        df_dominant_topic.head(10)
+
+        print("Sorted Highest:", nilai)
+        print("Sorted Highest:", nilai[0][1])
+
+        model = LdaModel(corpus=corpus_tfidf, id2word=dictionary,
+                         num_topics=nilai[0][0])  # num topic menyesuaikan hasil dari coherence value paling tinggi
+
+        for idx, topic in model.print_topics(-1):
+            print('Topic: {} Word: {}'.format(idx, topic))
+
+        import pyLDAvis.gensim
+
+        data = pyLDAvis.gensim.prepare(model, corpus_tfidf, dictionary)
+        print(data)
+        pyLDAvis.save_html(data, 'lda-gensim.html')
+
+
+    def compute_coherence_values(self, dictionary, corpus, texts, limit, start, step):
+        coherence_values = []
+        model_list = []
+        for num_topics in range(start, limit, step):
+            model = LdaModel(corpus=corpus, id2word=dictionary, num_topics=num_topics, iterations=100)
+            model_list.append(model)
+            coherencemodel = CoherenceModel(model=model, texts=texts, dictionary=dictionary, coherence='c_v')
+            coherence_values.append(coherencemodel.get_coherence())
+
+        return model_list, coherence_values
+
+    def format_topics_sentences(self, ldamodel, corpus, texts):
+        # Init output
+        sent_topics_df = pd.DataFrame()
+
+        # Get main topic in each document
+        for i, row in enumerate(ldamodel[corpus]):
+            row = sorted(row, key=lambda x: (x[1]), reverse=True)
+            # Get the Dominant topic, Perc Contribution and Keywords for each document
+            for j, (topic_num, prop_topic) in enumerate(row):
+                if j == 0:  # => dominant topic
+                    wp = ldamodel.show_topic(topic_num)
+                    topic_keywords = ", ".join([word for word, prop in wp])
+                    sent_topics_df = sent_topics_df.append(
+                        pd.Series([int(topic_num), round(prop_topic, 4), topic_keywords]), ignore_index=True)
+                else:
+                    break
+        sent_topics_df.columns = ['Dominant_Topic', 'Perc_Contribution', 'Topic_Keywords']
+
+        # Add original text to the end of the output
+        contents = pd.Series(texts)
+        sent_topics_df = pd.concat([sent_topics_df, contents], axis=1)
+        return (sent_topics_df)
 
 
 class Proses(object):
