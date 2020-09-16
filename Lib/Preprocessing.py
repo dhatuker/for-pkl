@@ -17,7 +17,6 @@ from gensim.models.ldamodel import LdaModel
 from gensim.corpora.dictionary import Dictionary
 from numpy import array
 
-from helper import *
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -32,11 +31,12 @@ from db.NewsparserDatabaseHandler import NewsparserDatabaseHandler
 class PreprocessingData(object):
     logger = None
     config = None
-    driver = None
+    time_stamp = None
 
-    def __init__(self, db, config=None, logger=None):
+    def __init__(self, db, config=None, logger=None, time_stamp=None):
         self.logger = logger
         self.config = config
+        self.time_stamp = time_stamp
         self.db = db
 
         g = open("stopwords.txt", "r")
@@ -80,40 +80,15 @@ class PreprocessingData(object):
         # remove stop-words
         tokenized_doc = tokenized_doc.apply(lambda x: [item for item in x if item not in stop_words])
 
-        # de-tokenization
-        detokenized_doc = []
-        for i in range(len(tokenized_doc)):
-            if i in tokenized_doc:
-                t = ' '.join(tokenized_doc[i])
-                detokenized_doc.append(t)
+        count_news = 0
 
-        # tfidf vectorizer of scikit learn
-        vectorizer = TfidfVectorizer(stop_words=stop_words, max_features=10000, max_df=0.5, use_idf=True,
-                                         ngram_range=(1, 3))
-        X = vectorizer.fit_transform(detokenized_doc)
-        print("Dari Vectorizer ", X.shape)  # check shape of the document-term matrixterms = vectorizer.get_feature_names()
+        for news in tokenized_doc:
+            count_news = count_news + 1
+            for word in news:
+                print(word)
+                #self.db.insert_prepro(self.time_stamp, count_news, word)
 
-        terms = vectorizer.get_feature_names()
-        #self.clusteringKmeans(X, terms, today)
         self.topicModeling(tokenized_doc)
-
-
-    def clusteringKmeans(self, X, terms, today):
-        num_clusters = 10
-        km = KMeans(n_clusters=num_clusters)
-
-        U, Sigma, VT = randomized_svd(X, n_components=10, n_iter=300,
-                                      random_state=122)
-
-        # printing the concepts
-        for i, comp in enumerate(VT):
-            count = i + 1
-            terms_comp = zip(terms, comp)
-            sorted_terms = sorted(terms_comp, key=lambda x: x[1], reverse=True)[:7]
-            print("Topik " + str(count) + ": ")
-            for t in sorted_terms:
-                topic = t[0]
-                self.db.insert_prepro(today, count, topic)
 
     def topicModeling(self, text_list):
         bigram = Phrases(text_list, min_count=10)
@@ -265,6 +240,10 @@ class Proses(object):
                                                           date_format='%Y%m%d', backup_count=5, bubble=True,
                                                           format_string=format_string)
             self.logger.handlers.append(loghandler)
+
+        #init time_stamp
+        self.time_stamp = time.gmtime()
+
         self.db = NewsparserDatabaseHandler.instantiate_from_configparser(self.config, self.logger)
 
     def run(self):
@@ -273,7 +252,7 @@ class Proses(object):
         self.hostname = socket.gethostname()
         self.hostip = socket.gethostbyname(self.hostname)
         self.logger.info("Starting {} on {}".format(type(self).__name__, self.hostname))
-        self.PreprocessingData = PreprocessingData(db=self.db, config=self.config, logger=self.logger)
+        self.PreprocessingData = PreprocessingData(db=self.db, config=self.config, logger=self.logger, time_stamp=self.time_stamp)
 
         self.PreprocessingData.prepros()
 

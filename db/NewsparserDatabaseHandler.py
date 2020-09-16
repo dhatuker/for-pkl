@@ -76,9 +76,9 @@ class NewsparserDatabaseHandler(object):
         rs = self._db.query(sql, time=time)
         return rs
 
-    def insert_prepro(self, date, topic_num, topic):
+    def insert_prepro(self, time, news_num, news_word):
         sql = """REPLACE INTO news_prepro 
-        (date, topic_num, topic)
-        VALUES (:date, :topic_num, :topic)"""
-        rs = self._db.query(sql, date=date, topic_num=topic_num, topic=topic)
+        (time, news_num, news_word)
+        VALUES (:time, :news_num, :news_word)"""
+        rs = self._db.query(sql, time=time, news_num=news_num, news_word=news_word)
         return rs
