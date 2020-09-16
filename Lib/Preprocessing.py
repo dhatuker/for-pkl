@@ -31,12 +31,12 @@ from db.NewsparserDatabaseHandler import NewsparserDatabaseHandler
 class PreprocessingData(object):
     logger = None
     config = None
-    time_stamp = None
+    ts = None
 
-    def __init__(self, db, config=None, logger=None, time_stamp=None):
+    def __init__(self, db, config=None, logger=None, ts=None):
         self.logger = logger
         self.config = config
-        self.time_stamp = time_stamp
+        self.time_stamp = ts
         self.db = db
 
         g = open("stopwords.txt", "r")
@@ -81,12 +81,12 @@ class PreprocessingData(object):
         tokenized_doc = tokenized_doc.apply(lambda x: [item for item in x if item not in stop_words])
 
         count_news = 0
+        time_stamp = time.strftime("%Y-%m-%d %H:%M:%S", self.ts)
 
         for news in tokenized_doc:
             count_news = count_news + 1
             for word in news:
-                print(word)
-                #self.db.insert_prepro(self.time_stamp, count_news, word)
+                self.db.insert_prepro(time_stamp, count_news, word)
 
         self.topicModeling(tokenized_doc)
 
@@ -242,7 +242,7 @@ class Proses(object):
             self.logger.handlers.append(loghandler)
 
         #init time_stamp
-        self.time_stamp = time.gmtime()
+        self.ts = time.gmtime()
 
         self.db = NewsparserDatabaseHandler.instantiate_from_configparser(self.config, self.logger)
 
@@ -252,7 +252,7 @@ class Proses(object):
         self.hostname = socket.gethostname()
         self.hostip = socket.gethostbyname(self.hostname)
         self.logger.info("Starting {} on {}".format(type(self).__name__, self.hostname))
-        self.PreprocessingData = PreprocessingData(db=self.db, config=self.config, logger=self.logger, time_stamp=self.time_stamp)
+        self.PreprocessingData = PreprocessingData(db=self.db, config=self.config, logger=self.logger, ts=self.ts)
 
         self.PreprocessingData.prepros()
 
