@@ -82,3 +82,9 @@ class NewsparserDatabaseHandler(object):
         VALUES (:time, :news_num, :news_word)"""
         rs = self._db.query(sql, time=time, news_num=news_num, news_word=news_word)
         return rs
+
+    def get_prepro(self, input):
+        time = input + '%'
+        sql = """SELECT * FROM news_prepro WHERE time LIKE :time"""
+        rs = self._db.query(sql, time=time)
+        return rs
