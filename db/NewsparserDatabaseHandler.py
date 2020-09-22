@@ -88,3 +88,13 @@ class NewsparserDatabaseHandler(object):
         sql = """SELECT * FROM news_prepro WHERE time LIKE :time"""
         rs = self._db.query(sql, time=time)
         return rs
+
+    def insert_newstopic(self, document_no, dominant_topic, topic_perc, keywords, text, time):
+        sql = """REPLACE INTO news_topic 
+        (document_no, dominant_topic, topic_perc_contrib, keywords, text, timestamp)
+        VALUES (:document_no, :dominant_topic, :topic_perc, :keywords, :text, :time)"""
+        rs = self._db.query(sql, document_no=document_no, dominant_topic=dominant_topic,
+                            topic_perc=topic_perc, keywords=keywords, text=text, time=time)
+        return rs
+
+    #def insert_lda(self, input):

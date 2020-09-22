@@ -106,6 +106,8 @@ class NewsParserData(object):
                 link_ = self.linkFilterKompas(i)
             elif news_id == 2:
                 link_ = self.linkFilterDetik(i)
+            elif news_id == 3:
+                link_ = self.linkFilterRepublika(i)
             elif news_id == 4:
                 link_ = self.linkFilterOkezone(i)
             elif news_id == 5:
@@ -128,12 +130,14 @@ class NewsParserData(object):
 
         self.logger.info("NEWS Title: {}".format(title))
 
-        date_ = self.driver.find_element_by_xpath(get_date)
-
-        if news_id == 4:
-            date = Helper.toDate(date_.text)
-        else:
-            date = date_.get_attribute("content")
+        try:
+            date_ = self.driver.find_element_by_xpath(get_date)
+            if news_id == 4:
+                date = Helper.toDate(date_.text)
+            else:
+                date = date_.get_attribute("content")
+        except:
+            date = None
 
         self.logger.info("NEWS Date: {}".format(date))
 
@@ -199,6 +203,12 @@ class NewsParserData(object):
             if "php" not in link:
                 link_ = re.sub(re_detik, "", link)
                 return link_
+
+    def linkFilterRepublika(self, link):
+        rep = "republika"
+
+        if rep in link :
+            return link
 
     #def getDate(self, input):
 

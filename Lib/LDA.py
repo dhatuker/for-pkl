@@ -2,21 +2,16 @@ import logbook
 import time
 import numpy as np
 import pandas as pd
-import re
 import sys
 import configparser
 import os
 import socket
 import gensim
 import gensim.corpora as corpora
-import pyLDAvis
-import pyLDAvis.gensim
 
 from gensim.models import Phrases
 from gensim import corpora, models
-from gensim.models.coherencemodel import CoherenceModel
 from gensim.models.ldamodel import LdaModel
-from gensim.utils import simple_preprocess
 from gensim.models import CoherenceModel
 from pprint import pprint
 from datetime import date
@@ -35,17 +30,18 @@ class LDA_Proses(object):
 
     def prepros(self):
         # today = str(date.today())
-        today = '2020-09-17 13:29:25'
-        data = list(self.db.get_prepro(today))
+        self.today = '2020-09-21 17:24:23'
 
-        doc = list()
+        data = list(self.db.get_prepro(self.today))
+
+        self.doc = list()
 
         for i in range(len(data)):
-            doc.append(data[i]['news_word'])
+            self.doc.append(data[i]['news_word'])
 
-        tokenized_doc = list(self.sent_to_words(doc))
+        tokenized_doc = list(self.sent_to_words(self.doc))
 
-        self.topicModeling(tokenized_doc)
+        return self.topicModeling(tokenized_doc)
 
 
     def sent_to_words(self, sentences):
@@ -54,17 +50,20 @@ class LDA_Proses(object):
 
 
     def topicModeling(self, text_list):
-        bigram = Phrases(text_list, min_count=10)
-        trigram = Phrases(bigram[text_list])
-        for idx in range(len(text_list)):
-            for token in bigram[text_list[idx]]:
-                if '_' in token:
-                    # Token is a bigram, add to document.
-                    text_list[idx].append(token)
-            for token in trigram[text_list[idx]]:
-                if '_' in token:
-                    # Token is a bigram, add to document.
-                    text_list[idx].append(token)
+        # #bigram trigram
+        # bigram = Phrases(text_list, min_count=5)
+        # trigram = Phrases(bigram[text_list])
+        # for idx in range(len(text_list)):
+        #     for token in bigram[text_list[idx]]:
+        #         if '_' in token:
+        #             # Token is a bigram, add to document.
+        #             text_list[idx].append(token)
+        #     for token in trigram[text_list[idx]]:
+        #         if '_' in token:
+        #             # Token is a bigram, add to document.
+        #             text_list[idx].append(token)
+
+
         dictionary = corpora.Dictionary(text_list)
         dictionary.filter_extremes(no_below=5, no_above=0.2)
         # no_below (int, optional) – Keep tokens which are contained in at least no_below documents.
@@ -83,26 +82,14 @@ class LDA_Proses(object):
         tfidf = models.TfidfModel(doc_term_matrix)  # build TF-IDF model
         corpus_tfidf = tfidf[doc_term_matrix]
 
-        start = 1
+        start = 2
         limit = 21
         step = 1
         model_list, coherence_values = self.compute_coherence_values(dictionary, corpus=corpus_tfidf,
                                                                      texts=text_list, start=start, limit=limit,
                                                                      step=step)
 
-        optimal_model = model_list[3]
-        model_topics = optimal_model.show_topics(formatted=False)
-        print("model list : ", model_topics)
-        # show graphs
-        # import matplotlib.pyplot as plt
-
         x = range(start, limit, step)
-
-        # plt.plot(x, coherence_values)
-        # plt.xlabel("Num Topics")
-        # plt.ylabel("Coherence score")
-        # plt.legend(("coherence_values"), loc='best')
-        # plt.show()
 
         nilai = []
 
@@ -112,30 +99,45 @@ class LDA_Proses(object):
 
         nilai.sort(reverse=True, key=PreHelper.maxCV)
 
-        df_topic_sents_keywords = self.format_topics_sentences(ldamodel=optimal_model, corpus=corpus_tfidf,
-                                                               texts=dictionary)
+        optimal_model = model_list[nilai[0][0]]
+        model_topics = optimal_model.show_topics(formatted=False)
+        #print("model list : ", optimal_model.print_topics(num_words=10))
 
-        # Format
-        df_dominant_topic = df_topic_sents_keywords.reset_index()
-        df_dominant_topic.columns = ['Document_No', 'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'Text']
-
-        # Show
-        df_dominant_topic.head(10)
 
         print("Sorted Highest:", nilai)
         print("Sorted Highest:", nilai[0][1])
 
-        model = LdaModel(corpus=corpus_tfidf, id2word=dictionary,
-                         num_topics=nilai[0][0])  # num topic menyesuaikan hasil dari coherence value paling tinggi
+        # model = LdaModel(corpus=corpus_tfidf, id2word=dictionary,
+        #                  num_topics=nilai[0][0])  # num topic menyesuaikan hasil dari coherence value paling tinggi
 
-        for idx, topic in model.print_topics(-1):
+        df_topic_sents_keywords = self.format_topics_sentences(ldamodel=optimal_model, corpus=corpus_tfidf,
+                                                               texts=self.doc)
+
+        # Format
+        df_dominant_topic = df_topic_sents_keywords.reset_index()
+        df_dominant_topic.columns = ['Document_No', 'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'Text']
+        no = df_dominant_topic['Document_No']
+        dominant = df_dominant_topic['Dominant_Topic']
+        perc = df_dominant_topic['Topic_Perc_Contrib']
+        key = df_dominant_topic['Keywords']
+        tex = df_dominant_topic['Text']
+
+        # Show
+        for data in range(len(no)):
+            self.db.insert_newstopic(data, dominant[data],
+                                     perc[data], key[data],
+                                     tex[data], self.today)
+
+        for idx, topic in optimal_model.print_topics(-1):
             print('Topic: {} Word: {}'.format(idx, topic))
 
         import pyLDAvis.gensim
 
-        data = pyLDAvis.gensim.prepare(model, corpus_tfidf, dictionary)
-        print(data)
-        pyLDAvis.save_html(data, 'lda-gensim.html')
+        lda = pyLDAvis.gensim.prepare(optimal_model, corpus_tfidf, dictionary)
+        print(lda)
+        pyLDAvis.save_html(lda, 'lda-gensim.html')
+
+        return lda
 
     def compute_coherence_values(self, dictionary, corpus, texts, limit, start, step):
         coherence_values = []
@@ -214,7 +216,9 @@ class LDA(object):
         self.logger.info("Starting {} on {}".format(type(self).__name__, self.hostname))
         self.LDA_Proses = LDA_Proses(db=self.db, config=self.config, logger=self.logger)
 
-        self.LDA_Proses.prepros()
+        lda = self.LDA_Proses.prepros()
 
         self.logger.info("Finish %s" % self.filename)
         print("--- %s seconds ---" % (time.time() - start_time))
+
+        return lda

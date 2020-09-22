@@ -5,6 +5,8 @@ import configparser
 import os
 import socket
 
+import gensim
+from gensim.models import CoherenceModel
 import warnings
 warnings.filterwarnings('ignore')
 import pandas as pd
@@ -28,7 +30,7 @@ class PreprocessingData(object):
 
     def prepros(self):
         # today = str(date.today())
-        today = '2020-09-08'
+        today = '2020-09-20'
         data = list(self.db.get_article(today))
         stop_words = self.gtext.split("\n")
         stop_words.extend(['kompas','republika' ,'com' ,'co'])
@@ -42,10 +44,7 @@ class PreprocessingData(object):
         news_df = pd.DataFrame({'document': doc})
 
         # removing everything except alphabets`
-        news_df['clean_doc'] = news_df['document'].str.replace("[^a-zA-Z#]", " ")
-
-        # removing null fields
-        news_df = news_df[news_df['clean_doc'].notnull()]
+        news_df['clean_doc'] = news_df['document'].str.replace("[^a-zA-Z0-9]", " ")
 
         # make all text lowercase
         news_df['clean_doc'] = news_df['clean_doc'].apply(lambda x: x.lower())
@@ -56,8 +55,17 @@ class PreprocessingData(object):
         # remove stop-words
         tokenized_doc = tokenized_doc.apply(lambda x: [item for item in x if item not in stop_words])
 
-        # Do stemming
-        data_join = self.join(tokenized_doc)
+        # Build the bigram and trigram models
+        bigram = gensim.models.Phrases(tokenized_doc, min_count=5, threshold=100)  # higher threshold fewer phrases.
+        trigram = gensim.models.Phrases(bigram[tokenized_doc], threshold=100)
+
+        # Faster way to get a sentence clubbed as a trigram/bigram
+        self.bigram_mod = gensim.models.phrases.Phraser(bigram)
+        self.trigram_mod = gensim.models.phrases.Phraser(trigram)
+
+        data_words_bigrams = self.make_bigrams(tokenized_doc)
+
+        data_join = self.join(data_words_bigrams)
 
         count_news = 0
 
@@ -65,6 +73,12 @@ class PreprocessingData(object):
             count_news = count_news + 1
             self.logger.info("START input database")
             self.db.insert_prepro(self.time_stamp, count_news, news)
+
+    def make_bigrams(self, texts):
+        return [self.bigram_mod[doc] for doc in texts]
+
+    def make_trigrams(self, texts):
+        return [self.trigram_mod[self.bigram_mod[doc]] for doc in texts]
 
     def join(self, texts):
         texts_out = []
