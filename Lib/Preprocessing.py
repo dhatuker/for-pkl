@@ -30,7 +30,7 @@ class PreprocessingData(object):
 
     def prepros(self):
         # today = str(date.today())
-        today = '2020-09-20'
+        today = '2020-09-23'
         data = list(self.db.get_article(today))
         stop_words = self.gtext.split("\n")
         stop_words.extend(['kompas','republika' ,'com' ,'co'])

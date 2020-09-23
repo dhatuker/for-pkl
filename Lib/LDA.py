@@ -30,7 +30,7 @@ class LDA_Proses(object):
 
     def prepros(self):
         # today = str(date.today())
-        self.today = '2020-09-21 17:24:23'
+        self.today = '2020-09-23 14:35:22'
 
         data = list(self.db.get_prepro(self.today))
 
@@ -83,7 +83,7 @@ class LDA_Proses(object):
         corpus_tfidf = tfidf[doc_term_matrix]
 
         start = 2
-        limit = 21
+        limit = 50
         step = 1
         model_list, coherence_values = self.compute_coherence_values(dictionary, corpus=corpus_tfidf,
                                                                      texts=text_list, start=start, limit=limit,

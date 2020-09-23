@@ -175,11 +175,13 @@ class NewsParserData(object):
 
     def linkFilterKompas(self, link):
         kpremium = "utm_source"
+        kjeo = "jeo."
         kompas = ".kompas."
 
         if kpremium not in link:
-            if kompas in link:
-                return link
+            if kjeo not in link:
+                if kompas in link:
+                    return link
 
     def linkFilterCNN(self, link):
         video = "/video"
