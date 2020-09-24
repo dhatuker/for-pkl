@@ -1,6 +1,6 @@
 import sys
 
-from Lib.NewsParser import NewsParserData, NewsParsing
+from NewsParser import NewsParserData, NewsParsing
 
 def main():
     news = NewsParsing()

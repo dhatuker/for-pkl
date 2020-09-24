@@ -1,0 +1,205 @@
+version: "3.7"
+
+services:
+
+  tasker:
+    container_name: tasker
+    image: mcuadros/ofelia
+    depends_on:
+      - news-crawler1
+      - news-crawler2
+      - news-crawler3
+      - news-crawler4
+      - news-crawler5
+    command: daemon --docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      ofelia.job-run.newscrawler1.schedule: "@every 10m"
+      ofelia.job-run.newscrawler1.container: "news-crawler1"
+      ofelia.job-run.newscrawler2.schedule: "@every 10m"
+      ofelia.job-run.newscrawler2.container: "news-crawler2"
+      ofelia.job-run.newscrawler3.schedule: "@every 10m"
+      ofelia.job-run.newscrawler3.container: "news-crawler3"
+      ofelia.job-run.newscrawler4.schedule: "@every 10m"
+      ofelia.job-run.newscrawler4.container: "news-crawler4"
+      ofelia.job-run.newscrawler5.schedule: "@every 10m"
+      ofelia.job-run.newscrawler5.container: "news-crawler5"
+
+  dbtest:
+    container_name: dbtest
+    image: mysql:5.7
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_USER: ${USERNAME}
+      MYSQL_ROOT_PASSWORD: ${PASS}
+      MYSQL_DATABASE: ${DATABASE}
+    command: mysqld --sql_mode=""
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3306"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - news_network
+    volumes:
+      - ./for_pkl.sql:/docker-entrypoint-initdb.d/for_pkl.sql
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: dbtest
+      PMA_USER: root
+      PMA_PASSWORD: dbtest
+    links:
+      - dbtest:dbtest
+    ports:
+      - "8080:80"
+    networks:
+      - news_network
+  selenium-hub:
+    restart: always
+    image: selenium/hub
+    container_name: selenium-hub
+    ports:
+      - "4444:4444"
+    networks:
+      - news_network
+  chrome:
+    restart: always
+    image: selenium/node-chrome
+    ports:
+      - "5900-5999:5900"
+    depends_on:
+      - selenium-hub
+    volumes:
+      - /dev/shm:/dev/shm
+    environment:
+      HUB_HOST: selenium-hub
+      HUB_PORT_4444_TCP_ADDR: selenium-hub
+      HUB_PORT_4444_TCP_PORT: 4444
+      DBUS_SESSION_BUS_ADDRESS: "/dev/null"
+    links:
+      - selenium-hub:hub
+    networks:
+      - news_network
+  news-crawler1:
+    container_name: news-crawler1
+    image: newsparser
+    ports:
+      - 8081:80
+    restart: on-failure
+    depends_on:
+      - dbtest
+      - selenium-hub
+    links:
+      - dbtest
+    environment:
+      - NAME=Docker
+      - DBTEST_HOST=dbtest
+      - DBTEST_PORT=3306
+      - SELENIUM_HOST=selenium-hub
+      - SELENIUM_PORT=4444
+    labels:
+      ofelia.enabled: "true"
+    command: >
+      ${CMD1}
+    networks:
+      - news_network
+  news-crawler2:
+    container_name: news-crawler2
+    image: newsparser
+    ports:
+      - 8082:80
+    restart: on-failure
+    depends_on:
+      - dbtest
+      - selenium-hub
+    links:
+      - dbtest
+    environment:
+      - NAME=Docker
+      - DBTEST_HOST=dbtest
+      - DBTEST_PORT=3306
+      - SELENIUM_HOST=selenium-hub
+      - SELENIUM_PORT=4444
+    labels:
+      ofelia.enabled: "true"
+    command: >
+      ${CMD2}
+    networks:
+      - news_network
+  news-crawler3:
+    container_name: news-crawler3
+    image: newsparser
+    ports:
+      - 8083:80
+    restart: on-failure
+    depends_on:
+      - dbtest
+      - selenium-hub
+    links:
+      - dbtest
+    environment:
+      - NAME=Docker
+      - DBTEST_HOST=dbtest
+      - DBTEST_PORT=3306
+      - SELENIUM_HOST=selenium-hub
+      - SELENIUM_PORT=4444
+    labels:
+      ofelia.enabled: "true"
+    command: >
+      ${CMD3}
+    networks:
+      - news_network
+  news-crawler4:
+    container_name: news-crawler4
+    image: newsparser
+    ports:
+      - 8084:80
+    restart: on-failure
+    depends_on:
+      - dbtest
+      - selenium-hub
+    links:
+      - dbtest
+    environment:
+      - NAME=Docker
+      - DBTEST_HOST=dbtest
+      - DBTEST_PORT=3306
+      - SELENIUM_HOST=selenium-hub
+      - SELENIUM_PORT=4444
+    labels:
+      ofelia.enabled: "true"
+    command: >
+      ${CMD4}
+    networks:
+      - news_network
+  news-crawler5:
+    container_name: news-crawler5
+    image: newsparser
+    ports:
+      - 8085:80
+    restart: on-failure
+    depends_on:
+      - dbtest
+      - selenium-hub
+    links:
+      - dbtest
+    environment:
+      - NAME=Docker
+      - DBTEST_HOST=dbtest
+      - DBTEST_PORT=3306
+      - SELENIUM_HOST=selenium-hub
+      - SELENIUM_PORT=4444
+    labels:
+      ofelia.enabled: "true"
+    command: >
+      ${CMD5}
+    networks:
+      - news_network
+
+networks:
+  news_network:
+    name: news_network

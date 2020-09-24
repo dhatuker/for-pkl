@@ -7,8 +7,8 @@ import os
 import socket
 import pickle
 
-from db.NewsparserDatabaseHandler import NewsparserDatabaseHandler
-from Lib.NewsHelper import Helper
+from NewsparserDatabaseHandler import NewsparserDatabaseHandler
+from NewsHelper import Helper
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOption
@@ -30,19 +30,11 @@ class NewsParserData(object):
 
         self.config = config
 
-        chrome_options = ChromeOption()
-
-        prefs = {"profile.default_content_setting_values.notifications": 2}
-        chrome_options.add_experimental_option("prefs", prefs)
-
-        # ignore error proxy
-        chrome_options.add_argument('--ignore-certificate-errors')
-        chrome_options.add_argument('--ignore-ssl-errors')
-
-        # automatically dismiss prompt
-        chrome_options.set_capability('unhandledPromptBehavior', 'dismiss')
-
-        self.driver = webdriver.Chrome(path_to_webdriver, chrome_options=chrome_options)
+        caps = {'browserName': os.getenv('BROWSER', 'chrome')}
+        self.driver = webdriver.Remote(
+            command_executor='http://selenium-hub:4444/wd/hub',
+            desired_capabilities=caps
+        )
 
         self.db = db
 
@@ -229,7 +221,7 @@ class NewsParsing(object):
     def init(self):
 
         self.filename, file_extension = os.path.splitext(os.path.basename(__file__))
-        config_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), '../config', 'config.ini')
+        config_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), '', 'config2.ini')
         log_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), '../logs', '%s.log' % self.filename)
 
         # load config

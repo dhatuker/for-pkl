@@ -1,0 +1,9 @@
+logbook
+regex
+selenium
+records
+logger
+mysqlclient
+sqlalchemy
+pymysql
+lxml
