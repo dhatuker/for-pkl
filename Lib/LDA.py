@@ -114,19 +114,45 @@ class LDA_Proses(object):
                                                                texts=self.doc)
 
         # Format
-        df_dominant_topic = df_topic_sents_keywords.reset_index()
-        df_dominant_topic.columns = ['Document_No', 'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'Text']
-        no = df_dominant_topic['Document_No']
-        dominant = df_dominant_topic['Dominant_Topic']
-        perc = df_dominant_topic['Topic_Perc_Contrib']
-        key = df_dominant_topic['Keywords']
-        tex = df_dominant_topic['Text']
+        df_topic_document = df_topic_sents_keywords.reset_index()
+        df_topic_document.columns = ['Document_No', 'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'Text']
+        no = df_topic_document['Document_No']
+        dominant = df_topic_document['Dominant_Topic']
+        perc = df_topic_document['Topic_Perc_Contrib']
+        key = df_topic_document['Keywords']
+        tex = df_topic_document['Text']
 
-        # Show
+        # Save to Database
         for data in range(len(no)):
             self.db.insert_newstopic(data, dominant[data],
                                      perc[data], key[data],
                                      tex[data], self.today)
+
+        # Number of Documents for Each Topic
+        topic_counts = df_topic_sents_keywords['Dominant_Topic'].value_counts()
+
+        # Percentage of Documents for Each Topic
+        topic_contribution = round(topic_counts / topic_counts.sum(), 4)
+
+        # Topic Number and Keywords
+        topic_num_keywords = df_topic_sents_keywords[['Dominant_Topic', 'Topic_Keywords']]
+
+        # Concatenate Column wise
+        df_dominant_topics = pd.concat([topic_num_keywords, topic_counts, topic_contribution], axis=1)
+
+        # Change Column names + initiate variable
+        df_dominant_topics.columns = ['Dominant_Topic', 'Topic_Keywords', 'Num_Documents', 'Perc_Documents']
+        dtopic = df_dominant_topics['Dominant_Topic']
+        ktopic = df_dominant_topics['Topic_Keywords']
+        ndoc = df_dominant_topics['Num_Documents']
+        pdoc = df_dominant_topics['Perc_Documents']
+
+        # Save to Database
+        print(df_dominant_topics)
+        for data in range(len(dtopic)):
+            self.db.insert_newsdominant(dtopic[data],
+                                     ktopic[data], ndoc[data],
+                                     pdoc[data], self.today)
 
         for idx, topic in optimal_model.print_topics(-1):
             print('Topic: {} Word: {}'.format(idx, topic))
@@ -134,7 +160,6 @@ class LDA_Proses(object):
         import pyLDAvis.gensim
 
         lda = pyLDAvis.gensim.prepare(optimal_model, corpus_tfidf, dictionary)
-        print(lda)
         pyLDAvis.save_html(lda, 'lda-gensim.html')
 
         return lda
@@ -143,7 +168,7 @@ class LDA_Proses(object):
         coherence_values = []
         model_list = []
         for num_topics in range(start, limit, step):
-            model = LdaModel(corpus=corpus, id2word=dictionary, num_topics=num_topics, iterations=100)
+            model = LdaModel(corpus=corpus, id2word=dictionary, num_topics=num_topics, iterations=500)
             model_list.append(model)
             coherencemodel = CoherenceModel(model=model, texts=texts, dictionary=dictionary, coherence='c_v')
             coherence_values.append(coherencemodel.get_coherence())

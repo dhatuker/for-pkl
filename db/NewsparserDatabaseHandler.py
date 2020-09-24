@@ -97,4 +97,12 @@ class NewsparserDatabaseHandler(object):
                             topic_perc=topic_perc, keywords=keywords, text=text, time=time)
         return rs
 
+    def insert_newsdominant(self, dominant_topic, topic_keywords, num_doc, perc_doc, time):
+        sql = """REPLACE INTO news_dominant_topic
+        (dominant_topic, topic_keywords, num_doc, perc_doc, timestamp)
+        VALUES (:dominant_topic, :topic_keywords, :num_doc, :perc_doc, :time)"""
+        rs = self._db.query(sql, dominant_topic=dominant_topic, topic_keywords=topic_keywords,
+                            num_doc=num_doc, perc_doc=perc_doc, time=time)
+        return rs
+
     #def insert_lda(self, input):
