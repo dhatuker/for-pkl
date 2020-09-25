@@ -31,8 +31,17 @@ class LDA_Proses(object):
     def prepros(self):
         # today = str(date.today())
         self.today = '2020-09-23 14:35:22'
+        self.today1 = '2020-09-23'
+
+        data_full = list(self.db.get_article(self.today1))
 
         data = list(self.db.get_prepro(self.today))
+
+        self.fulldoc = list()
+
+        for i in range(len(data_full)):
+            if data_full[i]['content'] is not None:
+                self.fulldoc.append(data_full[i]['title'] + " " + data_full[i]['content'])
 
         self.doc = list()
 
@@ -111,9 +120,9 @@ class LDA_Proses(object):
         #                  num_topics=nilai[0][0])  # num topic menyesuaikan hasil dari coherence value paling tinggi
 
         df_topic_sents_keywords = self.format_topics_sentences(ldamodel=optimal_model, corpus=corpus_tfidf,
-                                                               texts=self.doc)
+                                                               texts=self.fulldoc)
 
-        # Format
+        # Finding the dominant topic in each sentence
         df_topic_document = df_topic_sents_keywords.reset_index()
         df_topic_document.columns = ['Document_No', 'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'Text']
         no = df_topic_document['Document_No']
@@ -128,6 +137,34 @@ class LDA_Proses(object):
                                      perc[data], key[data],
                                      tex[data], self.today)
 
+        #Find the most representative document for each topic
+        # Group top 5 sentences under each topic
+        sent_topics_sorteddf_mallet = pd.DataFrame()
+
+        sent_topics_outdf_grpd = df_topic_sents_keywords.groupby('Dominant_Topic')
+
+        for i, grp in sent_topics_outdf_grpd:
+            sent_topics_sorteddf_mallet = pd.concat([sent_topics_sorteddf_mallet,
+                                                     grp.sort_values(['Perc_Contribution'], ascending=[0]).head(1)],
+                                                    axis=0)
+
+        # Reset Index
+        sent_topics_sorteddf_mallet.reset_index(drop=True, inplace=True)
+
+        # Format
+        sent_topics_sorteddf_mallet.columns = ['Topic_Num', "Topic_Perc_Contrib", "Keywords", "Text"]
+        no = sent_topics_sorteddf_mallet['Topic_Num']
+        perc = sent_topics_sorteddf_mallet['Topic_Perc_Contrib']
+        key = sent_topics_sorteddf_mallet['Keywords']
+        tex = sent_topics_sorteddf_mallet['Text']
+
+        # Save to Database
+        for data in range(len(no)):
+            self.db.insert_newsrepre(no[data],
+                                     perc[data], key[data],
+                                     tex[data], self.today)
+
+        #Topic distribution across document
         # Number of Documents for Each Topic
         topic_counts = df_topic_sents_keywords['Dominant_Topic'].value_counts()
 
@@ -148,7 +185,6 @@ class LDA_Proses(object):
         pdoc = df_dominant_topics['Perc_Documents']
 
         # Save to Database
-        print(df_dominant_topics)
         for data in range(len(dtopic)):
             self.db.insert_newsdominant(dtopic[data],
                                      ktopic[data], ndoc[data],

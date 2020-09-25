@@ -105,4 +105,10 @@ class NewsparserDatabaseHandler(object):
                             num_doc=num_doc, perc_doc=perc_doc, time=time)
         return rs
 
-    #def insert_lda(self, input):
+    def insert_newsrepre(self, topic_num, topik_perc, keyword, text, time):
+        sql = """REPLACE INTO news_repre_doc
+        (Topic_Num, Topic_Perc_Contrib, Keywords, Text, timestamp)
+        VALUES (:topic_num, :topik_perc, :keyword, :text, :time)"""
+        rs = self._db.query(sql, topic_num=topic_num, topik_perc=topik_perc,
+                            keyword=keyword, text=text, time=time)
+        return rs
