@@ -76,22 +76,22 @@ class NewsparserDatabaseHandler(object):
         rs = self._db.query(sql, time=time)
         return rs
 
-    def insert_prepro(self, time, news_num, news_word):
+    def insert_prepro(self, date, news_num, news_word):
         sql = """REPLACE INTO news_prepro 
-        (time, news_num, news_word)
-        VALUES (:time, :news_num, :news_word)"""
-        rs = self._db.query(sql, time=time, news_num=news_num, news_word=news_word)
+        (date, news_num, news_word)
+        VALUES (:date, :news_num, :news_word)"""
+        rs = self._db.query(sql, date=date, news_num=news_num, news_word=news_word)
         return rs
 
     def get_prepro(self, input):
         time = input + '%'
-        sql = """SELECT * FROM news_prepro WHERE time LIKE :time"""
+        sql = """SELECT * FROM news_prepro WHERE date LIKE :time"""
         rs = self._db.query(sql, time=time)
         return rs
 
     def insert_newstopic(self, document_no, dominant_topic, topic_perc, keywords, text, time):
         sql = """REPLACE INTO news_topic 
-        (document_no, dominant_topic, topic_perc_contrib, keywords, text, timestamp)
+        (document_no, dominant_topic, topic_perc_contrib, keywords, text, date)
         VALUES (:document_no, :dominant_topic, :topic_perc, :keywords, :text, :time)"""
         rs = self._db.query(sql, document_no=document_no, dominant_topic=dominant_topic,
                             topic_perc=topic_perc, keywords=keywords, text=text, time=time)
@@ -99,7 +99,7 @@ class NewsparserDatabaseHandler(object):
 
     def insert_newsdominant(self, dominant_topic, topic_keywords, num_doc, perc_doc, time):
         sql = """REPLACE INTO news_dominant_topic
-        (dominant_topic, topic_keywords, num_doc, perc_doc, timestamp)
+        (dominant_topic, topic_keywords, num_doc, perc_doc, date)
         VALUES (:dominant_topic, :topic_keywords, :num_doc, :perc_doc, :time)"""
         rs = self._db.query(sql, dominant_topic=dominant_topic, topic_keywords=topic_keywords,
                             num_doc=num_doc, perc_doc=perc_doc, time=time)
@@ -107,7 +107,7 @@ class NewsparserDatabaseHandler(object):
 
     def insert_newsrepre(self, topic_num, topik_perc, keyword, text, time):
         sql = """REPLACE INTO news_repre_doc
-        (Topic_Num, Topic_Perc_Contrib, Keywords, Text, timestamp)
+        (Topic_Num, Topic_Perc_Contrib, Keywords, Text, date)
         VALUES (:topic_num, :topik_perc, :keyword, :text, :time)"""
         rs = self._db.query(sql, topic_num=topic_num, topik_perc=topik_perc,
                             keyword=keyword, text=text, time=time)

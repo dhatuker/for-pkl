@@ -6,25 +6,25 @@ services:
     container_name: tasker
     image: mcuadros/ofelia
     depends_on:
-      - news-crawler1
-      - news-crawler2
-      - news-crawler3
-      - news-crawler4
-      - news-crawler5
+      - kompas
+      - detik
+      - okezone
+      - republika
+      - cnn
     command: daemon --docker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
-      ofelia.job-run.newscrawler1.schedule: "@every 10m"
-      ofelia.job-run.newscrawler1.container: "news-crawler1"
-      ofelia.job-run.newscrawler2.schedule: "@every 10m"
-      ofelia.job-run.newscrawler2.container: "news-crawler2"
-      ofelia.job-run.newscrawler3.schedule: "@every 10m"
-      ofelia.job-run.newscrawler3.container: "news-crawler3"
-      ofelia.job-run.newscrawler4.schedule: "@every 10m"
-      ofelia.job-run.newscrawler4.container: "news-crawler4"
-      ofelia.job-run.newscrawler5.schedule: "@every 10m"
-      ofelia.job-run.newscrawler5.container: "news-crawler5"
+      ofelia.job-run.newscrawler1.schedule: "@every 1h"
+      ofelia.job-run.newscrawler1.container: "kompas"
+      ofelia.job-run.newscrawler2.schedule: "@every 1h"
+      ofelia.job-run.newscrawler2.container: "detik"
+      ofelia.job-run.newscrawler3.schedule: "@every 1h"
+      ofelia.job-run.newscrawler3.container: "okezone"
+      ofelia.job-run.newscrawler4.schedule: "@every 1h"
+      ofelia.job-run.newscrawler4.container: "republika"
+      ofelia.job-run.newscrawler5.schedule: "@every 1h"
+      ofelia.job-run.newscrawler5.container: "cnn"
 
   dbtest:
     container_name: dbtest
@@ -84,8 +84,8 @@ services:
       - selenium-hub:hub
     networks:
       - news_network
-  news-crawler1:
-    container_name: news-crawler1
+  kompas:
+    container_name: kompas
     image: newsparser
     ports:
       - 8081:80
@@ -107,8 +107,8 @@ services:
       ${CMD1}
     networks:
       - news_network
-  news-crawler2:
-    container_name: news-crawler2
+  detik:
+    container_name: detik
     image: newsparser
     ports:
       - 8082:80
@@ -130,8 +130,8 @@ services:
       ${CMD2}
     networks:
       - news_network
-  news-crawler3:
-    container_name: news-crawler3
+  republika:
+    container_name: republika
     image: newsparser
     ports:
       - 8083:80
@@ -153,8 +153,8 @@ services:
       ${CMD3}
     networks:
       - news_network
-  news-crawler4:
-    container_name: news-crawler4
+  cnn:
+    container_name: cnn
     image: newsparser
     ports:
       - 8084:80
@@ -176,8 +176,8 @@ services:
       ${CMD4}
     networks:
       - news_network
-  news-crawler5:
-    container_name: news-crawler5
+  okezone:
+    container_name: okezone
     image: newsparser
     ports:
       - 8085:80

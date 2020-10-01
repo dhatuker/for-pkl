@@ -30,10 +30,9 @@ class LDA_Proses(object):
 
     def prepros(self):
         # today = str(date.today())
-        self.today = '2020-09-23 14:35:22'
-        self.today1 = '2020-09-23'
+        self.today = '2020-09-27'
 
-        data_full = list(self.db.get_article(self.today1))
+        data_full = list(self.db.get_article(self.today))
 
         data = list(self.db.get_prepro(self.today))
 
@@ -92,7 +91,7 @@ class LDA_Proses(object):
         corpus_tfidf = tfidf[doc_term_matrix]
 
         start = 2
-        limit = 50
+        limit = 100
         step = 1
         model_list, coherence_values = self.compute_coherence_values(dictionary, corpus=corpus_tfidf,
                                                                      texts=text_list, start=start, limit=limit,
@@ -108,9 +107,11 @@ class LDA_Proses(object):
 
         nilai.sort(reverse=True, key=PreHelper.maxCV)
 
-        optimal_model = model_list[nilai[0][0]]
+        n_topik = nilai[0][0] - 2
+
+        optimal_model = model_list[n_topik]
         model_topics = optimal_model.show_topics(formatted=False)
-        #print("model list : ", optimal_model.print_topics(num_words=10))
+        print("model list : ", optimal_model.print_topics(num_words=10))
 
 
         print("Sorted Highest:", nilai)

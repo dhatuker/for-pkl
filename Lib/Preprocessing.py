@@ -20,8 +20,6 @@ class PreprocessingData(object):
     def __init__(self, db, config=None, logger=None):
         self.logger = logger
         self.config = config
-        ts = time.localtime()
-        self.time_stamp = time.strftime("%Y-%m-%d %H:%M:%S", ts)
         self.db = db
 
         g = open("stopwords.txt", "r")
@@ -30,7 +28,7 @@ class PreprocessingData(object):
 
     def prepros(self):
         # today = str(date.today())
-        today = '2020-09-23'
+        today = '2020-09-27'
         data = list(self.db.get_article(today))
         stop_words = self.gtext.split("\n")
         stop_words.extend(['kompas','republika' ,'com' ,'co'])
@@ -72,7 +70,7 @@ class PreprocessingData(object):
         for news in data_join:
             count_news = count_news + 1
             self.logger.info("START input database")
-            self.db.insert_prepro(self.time_stamp, count_news, news)
+            self.db.insert_prepro(today, count_news, news)
 
     def make_bigrams(self, texts):
         return [self.bigram_mod[doc] for doc in texts]
