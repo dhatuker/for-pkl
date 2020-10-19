@@ -30,7 +30,7 @@ class LDA_Proses(object):
 
     def prepros(self):
         # today = str(date.today())
-        self.today = '2020-09-27'
+        self.today = '2020-09-23'
 
         data_full = list(self.db.get_article(self.today))
 
